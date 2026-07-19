@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>???</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const WIDTH = () => canvas.width;
+        const HEIGHT = () => canvas.height;
+
+        const stars = Array.from({ length: 150 }, () => ({
+            x: Math.random() * WIDTH(),
+            y: Math.random() * HEIGHT(),
+            radius: Math.random() * 1.8 + 0.7,
+            baseAlpha: Math.random() * 0.3 + 0.2,
+            colorBase: Math.floor(Math.random() * 60) + 200,
+            twinkle: Math.random() * 0.0015 + 0.0008
+        }));
+
+        const suns = [
+            { pos: [0, 0, 100], radius: 20, angle: 0, speed: 0.02, type: 'neutral' },
+            { pos: [100, 0, 50], radius: 15, angle: Math.PI / 2, speed: 0.03, type: 'warm' },
+            { pos: [0, 100, 75], radius: 18, angle: Math.PI, speed: 0.025, type: 'cool' }
+        ];
+
+        function drawBackground() {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, WIDTH(), HEIGHT());
+
+            stars.forEach(star => {
+                const alpha = star.baseAlpha + Math.sin(Date.now() * star.twinkle) * 0.2;
+                ctx.fillStyle = `rgba(${star.colorBase}, ${star.colorBase}, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function project3DTo2D(pos) {
+            const [x, y, z] = pos;
+            const scale = 200 / (z + 200);
+            const screenX = WIDTH() / 2 + x * scale;
+            const screenY = HEIGHT() / 2 + y * scale;
+            return [screenX, screenY, scale];
+        }
+
+        function updateSun(sun, time) {
+            sun.angle += sun.speed;
+            sun.pos[0] = 100 * Math.cos(sun.angle);
+            sun.pos[1] = 100 * Math.sin(sun.angle);
+            sun.pos[2] = 50 + 25 * Math.sin(sun.angle * 0.5);
+        }
+
+        function drawSun(sun) {
+            const [x, y, scale] = project3DTo2D(sun.pos);
+            const radius = sun.radius * scale;
+
+            let coreColor, coronaColor;
+            switch(sun.type) {
+                case 'warm':
+                    coreColor = '#FFFFFF';
+                    coronaColor = 'rgba(255, 250, 240, 0.3)';
+                    break;
+                case 'cool':
+                    coreColor = '#FFFFFF';
+                    coronaColor = 'rgba(240, 248, 255, 0.3)';
+                    break;
+                case 'neutral':
+                default:
+                    coreColor = '#FFFFFF';
+                    coronaColor = 'rgba(255, 255, 255, 0.3)';
+                    break;
+            }
+
+            const coronaGradient = ctx.createRadialGradient(x, y, radius, x, y, radius * 3);
+            coronaGradient.addColorStop(0, coronaColor);
+            coronaGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+            coronaGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = coronaGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            coreGradient.addColorStop(0, coreColor);
+            coreGradient.addColorStop(0.7, '#FFF5E1');
+            coreGradient.addColorStop(1, '#FFE4B5');
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        let time = 0;
+        function animate() {
+            suns.forEach(sun => updateSun(sun, time));
+            time += 1;
+
+            drawBackground();
+            suns.sort((a, b) => b.pos[2] - a.pos[2]).forEach(drawSun);
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
